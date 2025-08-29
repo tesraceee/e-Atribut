@@ -370,10 +370,19 @@
         }
 
         function renderStudentsTable() {
-            let filteredStudents = students.filter(s => 
-                (currentClassFilter === 'all' || s.class === currentClassFilter) &&
-                s.name.toLowerCase().includes(document.getElementById('search-student').value.toLowerCase())
-            );
+            let filteredStudents = students.slice().sort((a, b) => {
+                if (a.class < b.class) return -1;
+                if (a.class > b.class) return 1;
+                return a.name.localeCompare(b.name);
+            });
+
+            if (currentClassFilter !== 'all') {
+                filteredStudents = filteredStudents.filter(s => s.class === currentClassFilter);
+            }
+            if (document.getElementById('search-student').value) {
+                filteredStudents = filteredStudents.filter(s => s.name.toLowerCase().includes(document.getElementById('search-student').value.toLowerCase()));
+            }
+
             const paginatedStudents = filteredStudents.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
             const tableBody = document.getElementById('students-table-body');
             tableBody.innerHTML = paginatedStudents.length === 0 ? '<tr><td colspan="4" class="p-3 text-center text-slate-500">Tidak ada data siswa.</td></tr>' : 
@@ -396,16 +405,37 @@
             const container = document.getElementById('pagination-container');
             container.innerHTML = '';
             if (pageCount <= 1) return;
-            const createBtn = (text, page, isDisabled = false) => {
+
+            let pages = [];
+            if (pageCount <= 5) {
+                for (let i = 1; i <= pageCount; i++) pages.push(i);
+            } else {
+                pages.push(1);
+                if (currentPage > 2) pages.push('...');
+                if (currentPage > 1 && currentPage < pageCount) pages.push(currentPage);
+                if (currentPage < pageCount - 1) pages.push('...');
+                pages.push(pageCount);
+            }
+
+            const createBtn = (text, page, isDisabled = false, isActive = false) => {
                 const button = document.createElement('button');
                 button.innerHTML = text;
                 button.disabled = isDisabled;
-                button.className = `pagination-btn ${currentPage === page ? 'active' : ''}`;
-                button.onclick = () => { currentPage = page; renderStudentsTable(); };
+                button.className = `pagination-btn ${isActive ? 'active' : ''}`;
+                if (!isDisabled && text !== '...') {
+                    button.onclick = () => { currentPage = page; renderStudentsTable(); };
+                }
+                if (text === '...') {
+                    button.classList.add('cursor-default');
+                }
                 return button;
             };
+
             container.appendChild(createBtn('&laquo;', currentPage - 1, currentPage === 1));
-            for (let i = 1; i <= pageCount; i++) container.appendChild(createBtn(i, i));
+            let uniquePages = [...new Set(pages)];
+            uniquePages.forEach(page => {
+                container.appendChild(createBtn(page, page, page === '...', currentPage === page));
+            });
             container.appendChild(createBtn('&raquo;', currentPage + 1, currentPage === pageCount));
         }
 
