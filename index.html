@@ -16,7 +16,11 @@
             background-color: #1f2937; /* gray-800 */
             border: 1px solid #4b5563;
         }
-        .sidebar { background-color: #1f2937; border-right: 1px solid #374151; }
+        .sidebar { 
+            background-color: #1f2937; 
+            border-right: 1px solid #374151;
+            transition: transform 0.3s ease-in-out;
+        }
         .sidebar-link { 
             transition: all 0.2s ease-in-out;
             color: #9ca3af; /* gray-400 */
@@ -79,9 +83,12 @@
 
     <!-- Main App View -->
     <div id="app-view" class="hidden h-screen w-full">
-        <div class="flex h-full">
+        <div class="flex h-full relative">
+            <!-- Sidebar Overlay for Mobile -->
+            <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
+            
             <!-- Sidebar -->
-            <aside class="w-64 sidebar flex-shrink-0 no-print">
+            <aside id="sidebar" class="w-64 sidebar flex-shrink-0 no-print fixed md:relative h-full z-30 transform -translate-x-full md:translate-x-0">
                 <div class="p-6 text-2xl font-bold border-b border-gray-700 text-white text-center">e-Atribut</div>
                 <nav class="mt-6 flex flex-col justify-between h-[calc(100%-100px)]">
                     <div class="px-3 space-y-2">
@@ -98,13 +105,16 @@
             </aside>
             <!-- Main Content -->
             <main class="flex-1 overflow-y-auto bg-gray-900">
-                <header class="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-700 p-4 flex justify-end items-center no-print">
+                <header class="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-700 p-4 flex justify-between md:justify-end items-center no-print">
+                    <button id="menu-btn" class="md:hidden text-white text-2xl">
+                        <i class="fas fa-bars"></i>
+                    </button>
                     <div class="flex items-center">
                         <span id="user-email" class="text-sm text-gray-300 mr-4 font-medium"></span>
                         <i class="fas fa-user-circle text-2xl text-gray-500"></i>
                     </div>
                 </header>
-                <div class="p-8">
+                <div class="p-4 md:p-8">
                     <!-- Dashboard View -->
                     <div id="view-dashboard" class="page-content">
                         <h1 class="text-3xl font-bold text-white mb-6">Dashboard</h1>
@@ -231,6 +241,9 @@
         const loadingSpinner = document.getElementById('loading-spinner');
         const loginView = document.getElementById('login-view');
         const appView = document.getElementById('app-view');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const menuBtn = document.getElementById('menu-btn');
 
         // Utility Functions
         const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
@@ -248,10 +261,26 @@
         }
         document.getElementById('alert-ok-btn').addEventListener('click', () => alertModal.style.display = 'none');
 
+        // Mobile Sidebar Toggle
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        }
+
         // App Initialization
         function initializeAppLogic() {
             if (isAppInitialized) return;
-            document.querySelectorAll('.sidebar-link').forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); switchView(e.currentTarget.id.replace('nav-', 'view-')); }));
+            
+            menuBtn.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+
+            document.querySelectorAll('.sidebar-link').forEach(link => link.addEventListener('click', () => {
+                if (window.innerWidth < 768) { // md breakpoint
+                    toggleSidebar();
+                }
+                switchView(link.id.replace('nav-', 'view-'));
+            }));
+
             document.getElementById('search-student').addEventListener('input', () => { currentPage = 1; renderStudentsTable(); });
             document.getElementById('class-filter').addEventListener('change', (e) => { currentPage = 1; currentClassFilter = e.target.value; renderStudentsTable(); });
             document.body.addEventListener('click', handleBodyClick);
@@ -455,7 +484,7 @@
             document.querySelectorAll('.page-content').forEach(view => view.classList.add('hidden'));
             document.getElementById(viewId).classList.remove('hidden');
             document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
-            const activeLink = document.getElementById(viewId.replace('view-', 'nav-'));
+            const activeLink = document.getElementById(viewId.replace('nav-', 'view-'));
             if (activeLink) activeLink.classList.add('active');
             else if (viewId === 'view-student-detail') document.getElementById('nav-students').classList.add('active');
         }
