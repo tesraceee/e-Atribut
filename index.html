@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>e-Atribut</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #111827; color: #e5e7eb; }
+        .modal-backdrop { background-color: rgba(17, 24, 39, 0.8); backdrop-filter: blur(8px); }
+        .modal { 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-color: #1f2937; /* gray-800 */
+            border: 1px solid #4b5563;
+        }
+        .sidebar { background-color: #1f2937; border-right: 1px solid #374151; }
+        .sidebar-link { 
+            transition: all 0.2s ease-in-out;
+            color: #9ca3af; /* gray-400 */
+            font-weight: 500;
+        }
+        .sidebar-link:hover { 
+            background-color: #374151; /* gray-700 */
+            color: #ffffff;
+        }
+        .sidebar-link.active { 
+            background-image: linear-gradient(to right, #ec4899, #d946ef);
+            color: white;
+            font-weight: 600;
+        }
+        .btn { transition: all 0.2s ease-in-out; }
+        .btn:hover { transform: translateY(-2px); filter: brightness(1.1); }
+        .btn-gradient {
+            background-image: linear-gradient(to right, #ec4899, #d946ef);
+        }
+        .pagination-btn { @apply mx-1 px-3 py-1 rounded-md text-sm font-medium; }
+        .pagination-btn.active { background-image: linear-gradient(to right, #ec4899, #d946ef); color: white; }
+        .pagination-btn:not(.active) { @apply bg-slate-700 text-slate-300 hover:bg-slate-600 border border-slate-600; }
+        .pagination-btn:disabled { @apply opacity-50 cursor-not-allowed; }
+        input, select {
+            background-color: #374151; /* gray-700 */
+            border-color: #4b5563; /* gray-600 */
+            color: #e5e7eb;
+        }
+        input:focus, select:focus {
+            --tw-ring-color: #f472b6; /* pink-400 */
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+            border-color: #ec4899; /* pink-500 */
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Login View -->
+    <div id="login-view" class="flex items-center justify-center h-screen bg-gray-900">
+        <div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-2xl shadow-2xl border border-gray-700">
+            <div class="text-center">
+                <h2 class="mt-4 text-3xl font-bold text-white">e-Atribut</h2>
+                <p class="text-gray-400">Silakan login untuk melanjutkan</p>
+            </div>
+            <form id="login-form" class="space-y-6">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-gray-300">Email</label>
+                    <input id="email" name="email" type="email" autocomplete="email" required class="w-full px-4 py-2 mt-1 rounded-lg shadow-sm focus:outline-none">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-300">Password</label>
+                    <input id="password" name="password" type="password" autocomplete="current-password" required class="w-full px-4 py-2 mt-1 rounded-lg shadow-sm focus:outline-none">
+                </div>
+                <button type="submit" class="w-full btn btn-gradient text-white py-2.5 rounded-lg font-semibold shadow-lg">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App View -->
+    <div id="app-view" class="hidden h-screen w-full">
+        <div class="flex h-full">
+            <!-- Sidebar -->
+            <aside class="w-64 sidebar flex-shrink-0 no-print">
+                <div class="p-6 text-2xl font-bold border-b border-gray-700 text-white text-center">e-Atribut</div>
+                <nav class="mt-6 flex flex-col justify-between h-[calc(100%-100px)]">
+                    <div class="px-3 space-y-2">
+                        <a href="#" id="nav-dashboard" class="sidebar-link active flex items-center py-2.5 px-4 rounded-lg"><i class="fas fa-tachometer-alt w-6 mr-3"></i> Dashboard</a>
+                        <a href="#" id="nav-students" class="sidebar-link flex items-center py-2.5 px-4 rounded-lg"><i class="fas fa-user-graduate w-6 mr-3"></i> Data Siswa</a>
+                        <a href="#" id="nav-products" class="sidebar-link flex items-center py-2.5 px-4 rounded-lg"><i class="fas fa-box-open w-6 mr-3"></i> Data Produk</a>
+                        <a href="#" id="nav-classes" class="sidebar-link flex items-center py-2.5 px-4 rounded-lg"><i class="fas fa-chalkboard-teacher w-6 mr-3"></i> Data Kelas</a>
+                        <a href="#" id="nav-reports" class="sidebar-link flex items-center py-2.5 px-4 rounded-lg"><i class="fas fa-chart-line w-6 mr-3"></i> Laporan</a>
+                    </div>
+                    <div class="px-3">
+                        <button id="logout-btn" class="sidebar-link w-full text-left flex items-center py-2.5 px-4 rounded-lg"><i class="fas fa-sign-out-alt w-6 mr-3"></i> Logout</button>
+                    </div>
+                </nav>
+            </aside>
+            <!-- Main Content -->
+            <main class="flex-1 overflow-y-auto bg-gray-900">
+                <header class="bg-gray-800/80 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-700 p-4 flex justify-end items-center no-print">
+                    <div class="flex items-center">
+                        <span id="user-email" class="text-sm text-gray-300 mr-4 font-medium"></span>
+                        <i class="fas fa-user-circle text-2xl text-gray-500"></i>
+                    </div>
+                </header>
+                <div class="p-8">
+                    <!-- Dashboard View -->
+                    <div id="view-dashboard" class="page-content">
+                        <h1 class="text-3xl font-bold text-white mb-6">Dashboard</h1>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><h2 class="text-gray-400 text-sm font-medium">Total Siswa</h2><p id="total-students" class="text-3xl font-bold text-fuchsia-400 mt-2">0</p></div>
+                            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><h2 class="text-gray-400 text-sm font-medium">Total Produk</h2><p id="total-products" class="text-3xl font-bold text-emerald-400 mt-2">0</p></div>
+                            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><h2 class="text-gray-400 text-sm font-medium">Total Tunggakan</h2><p id="total-outstanding" class="text-3xl font-bold text-rose-400 mt-2">Rp 0</p></div>
+                            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><h2 class="text-gray-400 text-sm font-medium">Pemasukan Hari Ini</h2><p id="today-income" class="text-3xl font-bold text-amber-400 mt-2">Rp 0</p></div>
+                        </div>
+                        <div class="mt-8">
+                            <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                                <h2 class="text-xl font-bold text-white mb-4">Tunggakan Teratas</h2>
+                                <div class="overflow-x-auto">
+                                    <table class="w-full text-left">
+                                        <thead>
+                                            <tr class="border-b border-gray-700">
+                                                <th class="p-3 font-semibold text-gray-400">Nama Siswa</th>
+                                                <th class="p-3 font-semibold text-gray-400">Kelas</th>
+                                                <th class="p-3 font-semibold text-gray-400 text-right">Jumlah Tunggakan</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="top-outstanding-body">
+                                            <!-- Data will be populated here -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Students View -->
+                    <div id="view-students" class="page-content hidden">
+                        <h1 class="text-3xl font-bold text-white mb-6">Data Siswa</h1>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 mb-6">
+                            <h2 class="text-xl font-semibold mb-3 text-white">Impor Data Siswa dari Excel</h2>
+                            <p class="text-sm text-gray-400 mb-4">Pastikan file Excel Anda memiliki kolom <code class="bg-gray-700 text-pink-400 px-1 rounded">nama</code> di Kolom A dan <code class="bg-gray-700 text-pink-400 px-1 rounded">kelas</code> di Kolom B.</p>
+                            <div class="flex items-center space-x-4"><input type="file" id="excel-file-input" accept=".xlsx, .xls, .csv" class="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border file:border-gray-600 file:text-sm file:font-semibold file:bg-gray-700 file:text-gray-300 hover:file:bg-gray-600"/><button id="import-excel-btn" class="btn bg-emerald-600 text-white px-5 py-2 rounded-lg whitespace-nowrap shadow-md"><i class="fas fa-file-excel mr-2"></i>Impor Data</button></div>
+                        </div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
+                                <div class="flex items-center space-x-2 mb-4 md:mb-0">
+                                    <label for="class-filter" class="text-sm font-medium text-gray-300">Filter Kelas:</label>
+                                    <select id="class-filter" class="p-2 border rounded-lg"><option value="all">Semua Kelas</option></select>
+                                </div>
+                                <input type="text" id="search-student" placeholder="Cari nama siswa..." class="w-full md:w-auto p-2 rounded-lg">
+                            </div>
+                            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="p-3 font-semibold text-gray-400">Nama Siswa</th><th class="p-3 font-semibold text-gray-400">Kelas</th><th class="p-3 font-semibold text-gray-400">Sisa Tagihan</th><th class="p-3 font-semibold text-gray-400">Aksi</th></tr></thead><tbody id="students-table-body"></tbody></table></div>
+                            <div id="pagination-container" class="mt-4 flex justify-center items-center space-x-1"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Products View -->
+                    <div id="view-products" class="page-content hidden">
+                        <div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold text-white">Data Produk</h1><button id="add-product-btn" class="btn btn-gradient text-white px-5 py-2 rounded-lg shadow-md"><i class="fas fa-plus mr-2"></i>Tambah Produk</button></div>
+                         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="p-3 font-semibold text-gray-400">Nama Produk</th><th class="p-3 font-semibold text-gray-400">Harga</th><th class="p-3 font-semibold text-gray-400">Aksi</th></tr></thead><tbody id="products-table-body"></tbody></table></div></div>
+                    </div>
+
+                    <!-- Classes View -->
+                    <div id="view-classes" class="page-content hidden">
+                        <div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold text-white">Data Kelas</h1><button id="add-class-btn" class="btn btn-gradient text-white px-5 py-2 rounded-lg shadow-md"><i class="fas fa-plus mr-2"></i>Tambah Kelas</button></div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="p-3 font-semibold text-gray-400">Nama Kelas</th><th class="p-3 font-semibold text-gray-400">Jumlah Siswa</th><th class="p-3 font-semibold text-gray-400">Aksi</th></tr></thead><tbody id="classes-table-body"></tbody></table></div></div>
+                    </div>
+
+                    <!-- Reports View -->
+                    <div id="view-reports" class="page-content hidden">
+                        <div class="flex justify-between items-center mb-6 no-print"><h1 class="text-3xl font-bold text-white">Laporan Keuangan</h1><button id="download-report-btn" class="btn bg-slate-600 text-white px-5 py-2 rounded-lg shadow-md"><i class="fas fa-file-excel mr-2"></i>Download Excel</button></div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 no-print">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                <div><label for="report-start-date" class="block text-sm font-medium text-gray-300">Tanggal Mulai</label><input type="date" id="report-start-date" class="mt-1 block w-full p-2 rounded-lg"></div>
+                                <div><label for="report-end-date" class="block text-sm font-medium text-gray-300">Tanggal Selesai</label><input type="date" id="report-end-date" class="mt-1 block w-full p-2 rounded-lg"></div>
+                                <button id="generate-report-btn" class="btn bg-emerald-600 text-white px-5 py-2 rounded-lg w-full md:w-auto shadow-md">Tampilkan</button>
+                            </div>
+                        </div>
+                        <div id="report-display-area" class="mt-6 bg-gray-800 p-6 rounded-xl border border-gray-700">
+                            <h2 class="text-2xl font-bold text-center mb-2 text-white">Laporan Keuangan</h2>
+                            <p id="report-period" class="text-center text-gray-400 mb-8">Pilih rentang tanggal untuk menampilkan laporan.</p>
+                            <div id="report-summary" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 hidden">
+                                <div class="bg-emerald-900/50 p-6 rounded-lg border border-emerald-500/30"><h3 class="text-gray-400 font-medium">Total Pemasukan di Periode Ini</h3><p id="report-total-income" class="text-3xl font-bold text-emerald-400 mt-2">Rp 0</p></div>
+                                <div class="bg-rose-900/50 p-6 rounded-lg border border-rose-500/30"><h3 class="text-gray-400 font-medium">Total Tunggakan Keseluruhan</h3><p id="report-total-outstanding" class="text-3xl font-bold text-rose-400 mt-2">Rp 0</p></div>
+                            </div>
+                            <h3 class="text-xl font-semibold text-white mb-4">Rincian per Kelas</h3>
+                            <div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="p-3 font-semibold text-gray-400">Nama Kelas</th><th class="p-3 text-center font-semibold text-gray-400">Jumlah Siswa</th><th class="p-3 text-right font-semibold text-gray-400">Total Belanja (Periode)</th><th class="p-3 text-right font-semibold text-gray-400">Total Tunggakan</th></tr></thead><tbody id="report-table-body"><tr><td colspan="4" class="p-3 text-center text-gray-500">Tidak ada data untuk ditampilkan.</td></tr></tbody></table></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Student Detail View -->
+                    <div id="view-student-detail" class="page-content hidden"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <!-- Modals -->
+    <div id="transaction-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"><div class="modal rounded-lg shadow-xl w-full max-w-2xl p-8"><h2 class="text-2xl font-bold mb-6 text-white">Buat Transaksi Baru</h2><p class="mb-4 text-gray-300">Siswa: <strong id="modal-student-name" class="text-white"></strong></p><div id="transaction-items-container"></div><button id="add-transaction-item" class="text-pink-400 hover:text-pink-300 mt-2 mb-4 font-medium"><i class="fas fa-plus-circle mr-2"></i>Tambah Barang</button><hr class="my-4 border-gray-700"><div class="text-right font-bold text-xl mb-6 text-white">Total: <span id="transaction-total">Rp 0</span></div><div class="flex justify-end space-x-4"><button id="cancel-transaction" class="bg-gray-600 text-gray-200 px-6 py-2 rounded-lg btn">Batal</button><button id="save-transaction" class="btn btn-gradient text-white px-6 py-2 rounded-lg">Simpan</button></div></div></div>
+    <div id="payment-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"><div class="modal rounded-lg shadow-xl w-full max-w-md p-8"><h2 class="text-2xl font-bold mb-6 text-white">Input Pembayaran</h2><p class="mb-2 text-gray-300">Siswa: <strong id="payment-modal-student-name" class="text-white"></strong></p><p class="mb-4 text-gray-300">Total Tagihan: <strong id="payment-modal-total-bill" class="text-white"></strong></p><div><label for="payment-amount" class="block text-sm font-medium text-gray-300">Jumlah Pembayaran</label><input type="text" inputmode="numeric" id="payment-amount" class="mt-1 block w-full p-2 rounded-lg shadow-sm"></div><div class="flex justify-end space-x-4 mt-6"><button id="cancel-payment" class="bg-gray-600 text-gray-200 px-6 py-2 rounded-lg btn">Batal</button><button id="save-payment" class="bg-emerald-600 text-white px-6 py-2 rounded-lg btn">Simpan Pembayaran</button></div></div></div>
+    <div id="product-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"><div class="modal rounded-lg shadow-xl w-full max-w-md p-8"><h2 id="product-modal-title" class="text-2xl font-bold mb-6 text-white">Tambah Produk</h2><form id="product-form"><input type="hidden" id="product-id"><div class="mb-4"><label for="product-name" class="block text-sm font-medium text-gray-300">Nama Produk</label><input type="text" id="product-name" class="mt-1 block w-full p-2 rounded-lg shadow-sm" required></div><div><label for="product-price" class="block text-sm font-medium text-gray-300">Harga</label><input type="number" id="product-price" class="mt-1 block w-full p-2 rounded-lg shadow-sm" required min="0"></div><div class="flex justify-end space-x-4 mt-6"><button type="button" id="cancel-product" class="bg-gray-600 text-gray-200 px-6 py-2 rounded-lg btn">Batal</button><button type="submit" class="btn btn-gradient text-white px-6 py-2 rounded-lg">Simpan</button></div></form></div></div>
+    <div id="class-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"><div class="modal rounded-lg shadow-xl w-full max-w-md p-8"><h2 class="text-2xl font-bold mb-6 text-white">Tambah Kelas Baru</h2><form id="class-form"><div><label for="class-name" class="block text-sm font-medium text-gray-300">Nama Kelas</label><input type="text" id="class-name" class="mt-1 block w-full p-2 rounded-lg shadow-sm" required></div><div class="flex justify-end space-x-4 mt-6"><button type="button" id="cancel-class" class="bg-gray-600 text-gray-200 px-6 py-2 rounded-lg btn">Batal</button><button type="submit" class="btn btn-gradient text-white px-6 py-2 rounded-lg">Simpan</button></div></form></div></div>
+    <div id="confirmation-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"><div class="modal rounded-lg shadow-xl w-full max-w-sm p-8"><h2 class="text-xl font-bold mb-4 text-white">Konfirmasi</h2><p id="confirmation-message" class="text-gray-300 mb-6"></p><div class="flex justify-end space-x-4"><button id="confirm-cancel-btn" class="bg-gray-600 text-gray-200 px-6 py-2 rounded-lg btn">Batal</button><button id="confirm-action-btn" class="bg-rose-600 text-white px-6 py-2 rounded-lg btn">Ya, Lanjutkan</button></div></div></div>
+    <div id="alert-modal" class="fixed inset-0 z-50 items-center justify-center hidden modal-backdrop"><div class="modal rounded-lg shadow-xl w-full max-w-sm p-8"><div class="text-center"><i id="alert-icon" class="fas text-4xl mb-4"></i><h2 id="alert-title" class="text-xl font-bold mb-2 text-white"></h2><p id="alert-message" class="text-gray-300 mb-6"></p><button id="alert-ok-btn" class="btn btn-gradient text-white px-8 py-2 rounded-lg">OK</button></div></div></div>
+    <div id="loading-spinner" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-75"><i class="fas fa-spinner fa-spin text-pink-400 text-5xl"></i></div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, addDoc, doc, writeBatch, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        
+        const firebaseConfig = {
+           apiKey: "AIzaSyCvSJzRU-wrdcT24SjzLyY15pPc6F-MgC8",
+           authDomain: "bksmp-47d75.firebaseapp.com",
+           projectId: "bksmp-47d75",
+           storageBucket: "bksmp-47d75.firebasestorage.app",
+           messagingSenderId: "583452130184",
+           appId: "1:583452130184:web:08a31958f839ab6cef983d",
+           measurementId: "G-7H9YD4ZF1N"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+
+        // Global state
+        let students = [], products = [], classes = [], transactions = [], payments = [];
+        let currentPage = 1, rowsPerPage = 10, currentClassFilter = 'all', isAppInitialized = false;
+        let currentReportData = null;
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const loginView = document.getElementById('login-view');
+        const appView = document.getElementById('app-view');
+
+        // Utility Functions
+        const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        const showLoading = () => loadingSpinner.style.display = 'flex';
+        const hideLoading = () => loadingSpinner.style.display = 'none';
+        const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+
+        // Custom Alert Modal
+        const alertModal = document.getElementById('alert-modal');
+        function showAlert(message, title = "Peringatan", iconClass = "fa-exclamation-circle text-rose-400") {
+            document.getElementById('alert-title').textContent = title;
+            document.getElementById('alert-message').textContent = message;
+            document.getElementById('alert-icon').className = `fas ${iconClass} text-4xl mb-4`;
+            alertModal.style.display = 'flex';
+        }
+        document.getElementById('alert-ok-btn').addEventListener('click', () => alertModal.style.display = 'none');
+
+        // App Initialization
+        function initializeAppLogic() {
+            if (isAppInitialized) return;
+            document.querySelectorAll('.sidebar-link').forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); switchView(e.currentTarget.id.replace('nav-', 'view-')); }));
+            document.getElementById('search-student').addEventListener('input', () => { currentPage = 1; renderStudentsTable(); });
+            document.getElementById('class-filter').addEventListener('change', (e) => { currentPage = 1; currentClassFilter = e.target.value; renderStudentsTable(); });
+            document.body.addEventListener('click', handleBodyClick);
+            document.getElementById('generate-report-btn').addEventListener('click', generateReport);
+            document.getElementById('download-report-btn').addEventListener('click', downloadExcelReport);
+            document.getElementById('import-excel-btn').addEventListener('click', handleExcelImport);
+            document.getElementById('add-transaction-item').addEventListener('click', addTransactionItemRow);
+            document.getElementById('cancel-transaction').addEventListener('click', closeTransactionModal);
+            document.getElementById('save-transaction').addEventListener('click', saveTransaction);
+            document.getElementById('transaction-modal').addEventListener('input', (e) => { if (e.target.matches('.product-select, .quantity-input')) updateTransactionTotal(); });
+            document.getElementById('transaction-modal').addEventListener('click', (e) => { if (e.target.closest('.remove-transaction-item')) { e.target.closest('.transaction-item-row').remove(); updateTransactionTotal(); } });
+            document.getElementById('payment-amount').addEventListener('input', formatPaymentInput);
+            document.getElementById('cancel-payment').addEventListener('click', () => document.getElementById('payment-modal').style.display = 'none');
+            document.getElementById('save-payment').addEventListener('click', savePayment);
+            document.getElementById('product-form').addEventListener('submit', saveProduct);
+            document.getElementById('cancel-product').addEventListener('click', () => document.getElementById('product-modal').style.display = 'none');
+            document.getElementById('class-form').addEventListener('submit', saveClass);
+            document.getElementById('cancel-class').addEventListener('click', () => document.getElementById('class-modal').style.display = 'none');
+            document.getElementById('confirm-cancel-btn').addEventListener('click', closeConfirmation);
+            document.getElementById('confirm-action-btn').addEventListener('click', () => { if (confirmCallback) confirmCallback(); closeConfirmation(); });
+            initializeData();
+            isAppInitialized = true;
+        }
+
+        // Auth Logic
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                loginView.style.display = 'none';
+                appView.style.display = 'block';
+                document.getElementById('user-email').textContent = user.email;
+                initializeAppLogic();
+            } else {
+                loginView.style.display = 'flex';
+                appView.style.display = 'none';
+                isAppInitialized = false;
+                hideLoading();
+            }
+        });
+
+        const loginForm = document.getElementById('login-form');
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoading();
+            try {
+                await signInWithEmailAndPassword(auth, loginForm.email.value, loginForm.password.value);
+            } catch (error) {
+                hideLoading();
+                showAlert("Login gagal. Periksa kembali email dan password Anda.");
+            }
+        });
+
+        document.getElementById('logout-btn').addEventListener('click', () => signOut(auth));
+
+        // Data Fetching
+        async function initializeData() {
+            showLoading();
+            try {
+                const [studentsSnap, productsSnap, classesSnap, transactionsSnap, paymentsSnap] = await Promise.all([
+                    getDocs(collection(db, "students")), getDocs(collection(db, "products")),
+                    getDocs(collection(db, "classes")), getDocs(collection(db, "transactions")),
+                    getDocs(collection(db, "payments"))
+                ]);
+                students = studentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                products = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                classes = classesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                transactions = transactionsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                payments = paymentsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                populateClassFilter(); renderStudentsTable(); renderProductsTable();
+                renderClassesTable(); updateDashboard();
+            } catch (error) {
+                showAlert("Gagal memuat data dari database.");
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // Rendering Functions
+        function populateClassFilter() {
+            const filterSelect = document.getElementById('class-filter');
+            filterSelect.innerHTML = '<option value="all">Semua Kelas</option>';
+            classes.sort((a, b) => a.name.localeCompare(b.name)).forEach(c => {
+                const option = document.createElement('option');
+                option.value = c.name;
+                option.textContent = c.name;
+                filterSelect.appendChild(option);
+            });
+        }
+
+        function renderStudentsTable() {
+            let filteredStudents = students.filter(s => 
+                (currentClassFilter === 'all' || s.class === currentClassFilter) &&
+                s.name.toLowerCase().includes(document.getElementById('search-student').value.toLowerCase())
+            );
+            const paginatedStudents = filteredStudents.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+            const tableBody = document.getElementById('students-table-body');
+            tableBody.innerHTML = paginatedStudents.length === 0 ? '<tr><td colspan="4" class="p-3 text-center text-slate-500">Tidak ada data siswa.</td></tr>' : 
+            paginatedStudents.map(student => {
+                const remainingBill = calculateTotalBill(student.id) - calculateTotalPaid(student.id);
+                return `<tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                        <td class="p-3 font-medium text-white">${student.name}</td>
+                        <td class="p-3 text-gray-300">${student.class}</td>
+                        <td class="p-3 font-semibold ${remainingBill > 0 ? 'text-rose-400' : 'text-emerald-400'}">${formatCurrency(remainingBill)}</td>
+                        <td class="p-3 space-x-2">
+                            <button class="view-student-detail-btn text-cyan-400 hover:text-cyan-300 px-2 py-1" title="Lihat Detail" data-id="${student.id}"><i class="fas fa-eye"></i></button>
+                            <button class="delete-student-btn text-rose-400 hover:text-rose-300 px-2 py-1" title="Hapus Siswa" data-id="${student.id}"><i class="fas fa-trash"></i></button>
+                        </td></tr>`;
+            }).join('');
+            renderPagination(filteredStudents.length);
+        }
+
+        function renderPagination(totalRows) {
+            const pageCount = Math.ceil(totalRows / rowsPerPage);
+            const container = document.getElementById('pagination-container');
+            container.innerHTML = '';
+            if (pageCount <= 1) return;
+            const createBtn = (text, page, isDisabled = false) => {
+                const button = document.createElement('button');
+                button.innerHTML = text;
+                button.disabled = isDisabled;
+                button.className = `pagination-btn ${currentPage === page ? 'active' : ''}`;
+                button.onclick = () => { currentPage = page; renderStudentsTable(); };
+                return button;
+            };
+            container.appendChild(createBtn('&laquo;', currentPage - 1, currentPage === 1));
+            for (let i = 1; i <= pageCount; i++) container.appendChild(createBtn(i, i));
+            container.appendChild(createBtn('&raquo;', currentPage + 1, currentPage === pageCount));
+        }
+
+        function renderProductsTable() {
+            const tableBody = document.getElementById('products-table-body');
+            tableBody.innerHTML = products.length === 0 ? '<tr><td colspan="3" class="p-3 text-center text-slate-500">Tidak ada data produk.</td></tr>' :
+            products.map(product => `<tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                        <td class="p-3 text-white">${product.name}</td>
+                        <td class="p-3 text-gray-300">${formatCurrency(product.price)}</td>
+                        <td class="p-3 space-x-4">
+                            <button class="edit-product-btn text-amber-400 hover:text-amber-300" data-id="${product.id}"><i class="fas fa-edit"></i></button>
+                            <button class="delete-product-btn text-rose-400 hover:text-rose-300" data-id="${product.id}"><i class="fas fa-trash"></i></button>
+                        </td></tr>`).join('');
+        }
+
+        function renderClassesTable() {
+            const tableBody = document.getElementById('classes-table-body');
+            tableBody.innerHTML = classes.length === 0 ? '<tr><td colspan="3" class="p-3 text-center text-slate-500">Tidak ada data kelas.</td></tr>' :
+            classes.map(c => `<tr class="border-b border-gray-700 hover:bg-gray-700/50">
+                        <td class="p-3 font-medium text-white">${c.name}</td>
+                        <td class="p-3 text-gray-300">${students.filter(s => s.class === c.name).length}</td>
+                        <td class="p-3">
+                            <button class="delete-class-btn text-rose-400 hover:text-rose-300" data-id="${c.id}" data-name="${c.name}"><i class="fas fa-trash"></i></button>
+                        </td></tr>`).join('');
+        }
+        
+        function renderStudentDetail(studentId) {
+            const student = students.find(s => s.id === studentId);
+            if (!student) return;
+            const studentTransactions = transactions.filter(t => t.studentId === studentId);
+            const remainingBill = calculateTotalBill(studentId) - calculateTotalPaid(studentId);
+            const detailView = document.getElementById('view-student-detail');
+            detailView.innerHTML = `<button id="back-to-students" class="mb-6 text-cyan-400 hover:underline no-print font-medium"><i class="fas fa-arrow-left mr-2"></i>Kembali</button>
+                <div class="bg-gray-800 p-8 rounded-xl border border-gray-700">
+                    <div class="flex justify-between items-start">
+                        <div><h1 class="text-3xl font-bold text-white">${student.name}</h1><p class="text-gray-400 text-lg">Kelas: ${student.class}</p></div>
+                        <div class="text-right"><p class="text-gray-400">Sisa Tagihan</p><p class="text-4xl font-bold ${remainingBill > 0 ? 'text-rose-400' : 'text-emerald-400'}">${formatCurrency(remainingBill)}</p></div>
+                    </div>
+                    <div class="mt-8 flex space-x-4 no-print">
+                        <button id="new-transaction-btn" data-id="${student.id}" class="btn btn-gradient text-white px-5 py-2 rounded-lg shadow-md"><i class="fas fa-plus mr-2"></i>Transaksi Baru</button>
+                        <button id="new-payment-btn" data-id="${student.id}" class="btn bg-emerald-600 text-white px-5 py-2 rounded-lg shadow-md" ${remainingBill <= 0 ? 'disabled' : ''}><i class="fas fa-money-bill-wave mr-2"></i>Bayar</button>
+                    </div>
+                    <div class="mt-10"><h2 class="text-xl font-semibold text-white mb-4">Riwayat Transaksi</h2><div class="space-y-3">${studentTransactions.length > 0 ? studentTransactions.map(t => `<div class="p-4 border rounded-lg ${t.status === 'Lunas' ? 'bg-emerald-900/50 border-emerald-500/30' : 'bg-rose-900/50 border-rose-500/30'}"><div class="flex justify-between items-center"><span class="font-medium text-white">Transaksi (${formatDate(t.createdAt.seconds * 1000)})</span><span class="font-bold text-lg text-white">${formatCurrency(t.total)}</span></div><ul class="list-disc pl-5 mt-2 text-sm text-gray-400">${t.items.map(item => `<li>${item.quantity}x ${item.productName}</li>`).join('')}</ul><span class="text-xs font-semibold px-2 py-1 rounded-full ${t.status === 'Lunas' ? 'bg-emerald-400/20 text-emerald-300' : 'bg-rose-400/20 text-rose-300'}">${t.status}</span></div>`).join('') : '<p class="text-gray-400">Belum ada transaksi.</p>'}</div></div>
+                </div>`;
+            switchView('view-student-detail');
+        }
+        
+        function updateDashboard() {
+            document.getElementById('total-students').textContent = students.length;
+            document.getElementById('total-products').textContent = products.length;
+            const totalOutstanding = students.reduce((acc, student) => acc + (calculateTotalBill(student.id) - calculateTotalPaid(student.id)), 0);
+            document.getElementById('total-outstanding').textContent = formatCurrency(totalOutstanding);
+            const today = new Date().setHours(0, 0, 0, 0);
+            const todayIncome = payments.filter(p => p.createdAt && p.createdAt.seconds && new Date(p.createdAt.seconds * 1000).setHours(0, 0, 0, 0) === today).reduce((acc, p) => acc + p.amount, 0);
+            document.getElementById('today-income').textContent = formatCurrency(todayIncome);
+
+            // Update Top Outstanding Students
+            const outstandingStudents = students
+                .map(student => ({ ...student, remainingBill: calculateTotalBill(student.id) - calculateTotalPaid(student.id) }))
+                .filter(student => student.remainingBill > 0)
+                .sort((a, b) => b.remainingBill - a.remainingBill)
+                .slice(0, 5);
+            const topOutstandingBody = document.getElementById('top-outstanding-body');
+            topOutstandingBody.innerHTML = outstandingStudents.length > 0 ? outstandingStudents.map(student => `
+                <tr class="border-b border-gray-700/50">
+                    <td class="p-3 font-medium text-white">${student.name}</td>
+                    <td class="p-3 text-gray-300">${student.class}</td>
+                    <td class="p-3 font-semibold text-rose-400 text-right">${formatCurrency(student.remainingBill)}</td>
+                </tr>`).join('') : '<tr><td colspan="3" class="p-3 text-center text-gray-500">Tidak ada siswa dengan tunggakan.</td></tr>';
+        }
+
+        const calculateTotalBill = (studentId) => transactions.filter(t => t.studentId === studentId).reduce((total, t) => total + t.total, 0);
+        const calculateTotalPaid = (studentId) => payments.filter(p => p.studentId === studentId).reduce((total, p) => total + p.amount, 0);
+
+        function switchView(viewId) {
+            document.querySelectorAll('.page-content').forEach(view => view.classList.add('hidden'));
+            document.getElementById(viewId).classList.remove('hidden');
+            document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+            const activeLink = document.getElementById(viewId.replace('view-', 'nav-'));
+            if (activeLink) activeLink.classList.add('active');
+            else if (viewId === 'view-student-detail') document.getElementById('nav-students').classList.add('active');
+        }
+        
+        function handleBodyClick(e) {
+            const target = e.target;
+            const viewBtn = target.closest('.view-student-detail-btn');
+            const deleteStudentBtn = target.closest('.delete-student-btn');
+            const editProductBtn = target.closest('.edit-product-btn');
+            const deleteProductBtn = target.closest('.delete-product-btn');
+            const deleteClassBtn = target.closest('.delete-class-btn');
+            if (viewBtn) renderStudentDetail(viewBtn.dataset.id);
+            if (deleteStudentBtn) handleDeleteStudent(deleteStudentBtn.dataset.id);
+            if (editProductBtn) openProductModal(editProductBtn.dataset.id);
+            if (deleteProductBtn) handleDeleteProduct(deleteProductBtn.dataset.id);
+            if (deleteClassBtn) handleDeleteClass(deleteClassBtn.dataset.id, deleteClassBtn.dataset.name);
+            if (target.matches('#back-to-students')) switchView('view-students');
+            if (target.matches('#new-transaction-btn')) openTransactionModal(target.dataset.id);
+            if (target.matches('#new-payment-btn')) openPaymentModal(target.dataset.id);
+            if (target.matches('#add-product-btn')) openProductModal();
+            if (target.matches('#add-class-btn')) openClassModal();
+        }
+
+        function generateReport() {
+            const startDateInput = document.getElementById('report-start-date').value;
+            const endDateInput = document.getElementById('report-end-date').value;
+            if (!startDateInput || !endDateInput) {
+                showAlert("Silakan pilih tanggal mulai dan tanggal selesai."); return;
+            }
+            const startDate = new Date(startDateInput);
+            const endDate = new Date(endDateInput);
+            endDate.setHours(23, 59, 59, 999);
+            const incomeInPeriod = payments.filter(p => p.createdAt && p.createdAt.seconds && p.createdAt.seconds * 1000 >= startDate.getTime() && p.createdAt.seconds * 1000 <= endDate.getTime()).reduce((sum, p) => sum + p.amount, 0);
+            const totalOutstanding = students.reduce((acc, student) => acc + (calculateTotalBill(student.id) - calculateTotalPaid(student.id)), 0);
+            
+            const reportByClass = {};
+            classes.forEach(c => {
+                reportByClass[c.name] = { studentCount: 0, totalSpendingInPeriod: 0, totalOutstanding: 0 };
+            });
+
+            students.forEach(student => {
+                const className = student.class || "Tanpa Kelas";
+                if (!reportByClass[className]) {
+                    reportByClass[className] = { studentCount: 0, totalSpendingInPeriod: 0, totalOutstanding: 0 };
+                }
+                reportByClass[className].studentCount++;
+                reportByClass[className].totalOutstanding += (calculateTotalBill(student.id) - calculateTotalPaid(student.id));
+            });
+
+            transactions.forEach(transaction => {
+                if(transaction.createdAt && transaction.createdAt.seconds) {
+                    const createdAt = transaction.createdAt.seconds * 1000;
+                    if (createdAt >= startDate.getTime() && createdAt <= endDate.getTime()) {
+                        const student = students.find(s => s.id === transaction.studentId);
+                        if (student) {
+                            const className = student.class || "Tanpa Kelas";
+                            if (reportByClass[className]) {
+                                reportByClass[className].totalSpendingInPeriod += transaction.total;
+                            }
+                        }
+                    }
+                }
+            });
+
+            currentReportData = {
+                period: `Periode: ${formatDate(startDate)} - ${formatDate(endDate)}`,
+                income: incomeInPeriod,
+                outstanding: totalOutstanding,
+                details: Object.keys(reportByClass).sort().map(className => ({
+                    "Nama Kelas": className,
+                    "Jumlah Siswa": reportByClass[className].studentCount,
+                    "Total Belanja (Periode)": reportByClass[className].totalSpendingInPeriod,
+                    "Total Tunggakan": reportByClass[className].totalOutstanding,
+                }))
+            };
+
+            document.getElementById('report-period').textContent = currentReportData.period;
+            document.getElementById('report-total-income').textContent = formatCurrency(currentReportData.income);
+            document.getElementById('report-total-outstanding').textContent = formatCurrency(currentReportData.outstanding);
+            document.getElementById('report-summary').classList.remove('hidden');
+            const reportTableBody = document.getElementById('report-table-body');
+            reportTableBody.innerHTML = currentReportData.details.length === 0 ? '<tr><td colspan="4" class="p-3 text-center text-gray-500">Tidak ada data.</td></tr>' :
+            currentReportData.details.map(data => `<tr><td class="p-3 font-medium text-white">${data["Nama Kelas"]}</td><td class="p-3 text-center text-gray-300">${data["Jumlah Siswa"]}</td><td class="p-3 text-right text-gray-300">${formatCurrency(data["Total Belanja (Periode)"])}</td><td class="p-3 text-right font-semibold ${data["Total Tunggakan"] > 0 ? 'text-rose-400' : 'text-emerald-400'}">${formatCurrency(data["Total Tunggakan"])}</td></tr>`).join('');
+        }
+        
+        function downloadExcelReport() {
+            if (!currentReportData || !currentReportData.details || currentReportData.details.length === 0) {
+                showAlert("Tidak ada data laporan untuk diunduh. Silakan tampilkan laporan terlebih dahulu.");
+                return;
+            }
+            const worksheet = XLSX.utils.json_to_sheet(currentReportData.details);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan per Kelas");
+
+            const summaryData = [
+                ["Laporan Keuangan"],
+                [currentReportData.period],
+                [],
+                ["Total Pemasukan Periode Ini", currentReportData.income],
+                ["Total Tunggakan Keseluruhan", currentReportData.outstanding]
+            ];
+            const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+            summarySheet['!cols'] = [{wch:30}, {wch:20}];
+            XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan");
+
+            worksheet['!cols'] = [{wch:20}, {wch:15}, {wch:25}, {wch:25}];
+
+            XLSX.writeFile(workbook, `Laporan-Keuangan-${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function handleExcelImport() {
+            const fileInput = document.getElementById('excel-file-input');
+            const file = fileInput.files[0];
+            if (!file) { showAlert("Silakan pilih file Excel."); return; }
+            showLoading();
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(event.target.result), { type: 'array' });
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, range: 1 });
+                    if (jsonData.length === 0) { showAlert("File Excel kosong."); hideLoading(); return; }
+                    const batch = writeBatch(db);
+                    let importedCount = 0;
+                    jsonData.forEach(row => {
+                        if (row[0] && row[1]) {
+                            batch.set(doc(collection(db, "students")), { name: String(row[0]), class: String(row[1]) });
+                            importedCount++;
+                        }
+                    });
+                    if (importedCount > 0) {
+                        await batch.commit();
+                        showAlert(`${importedCount} data siswa berhasil diimpor!`, 'Sukses', 'fa-check-circle text-green-500');
+                        await initializeData();
+                    } else { showAlert("Tidak ada data valid untuk diimpor."); }
+                } catch (e) { console.error(e); showAlert("Gagal memproses file Excel."); } 
+                finally { hideLoading(); fileInput.value = ''; }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        let transactionStudentId = null;
+        function openTransactionModal(studentId) {
+            transactionStudentId = studentId;
+            document.getElementById('modal-student-name').textContent = students.find(s => s.id === studentId).name;
+            document.getElementById('transaction-items-container').innerHTML = '';
+            addTransactionItemRow(); updateTransactionTotal(); document.getElementById('transaction-modal').style.display = 'flex';
+        }
+        function closeTransactionModal() { document.getElementById('transaction-modal').style.display = 'none'; }
+        function addTransactionItemRow() {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'flex items-center space-x-4 mb-3 transaction-item-row';
+            itemDiv.innerHTML = `<select class="product-select flex-grow p-2 border rounded-lg"><option value="">Pilih Produk</option>${products.map(p => `<option value="${p.id}" data-price="${p.price}">${p.name}</option>`).join('')}</select><input type="number" class="quantity-input w-24 p-2 border rounded-lg" value="1" min="1"><button class="remove-transaction-item text-rose-500 hover:text-rose-700"><i class="fas fa-trash"></i></button>`;
+            document.getElementById('transaction-items-container').appendChild(itemDiv);
+        }
+        function updateTransactionTotal() {
+            let total = 0;
+            document.querySelectorAll('.transaction-item-row').forEach(row => {
+                const sel = row.querySelector('.product-select');
+                const opt = sel.options[sel.selectedIndex];
+                if (opt && opt.value) total += parseFloat(opt.dataset.price) * (parseInt(row.querySelector('.quantity-input').value) || 0);
+            });
+            document.getElementById('transaction-total').textContent = formatCurrency(total);
+        }
+        async function saveTransaction() {
+            const items = []; let total = 0;
+            document.querySelectorAll('.transaction-item-row').forEach(row => {
+                const sel = row.querySelector('.product-select');
+                const opt = sel.options[sel.selectedIndex];
+                const quantity = parseInt(row.querySelector('.quantity-input').value);
+                if (opt && opt.value && quantity > 0) {
+                    items.push({ productId: opt.value, productName: opt.text, quantity, price: parseFloat(opt.dataset.price) });
+                    total += parseFloat(opt.dataset.price) * quantity;
+                }
+            });
+            if (items.length === 0) { showAlert("Tambahkan setidaknya satu barang."); return; }
+            showLoading();
+            try {
+                await addDoc(collection(db, "transactions"), { studentId: transactionStudentId, items, total, status: 'Belum Lunas', createdAt: new Date() });
+                closeTransactionModal(); await initializeData(); renderStudentDetail(transactionStudentId);
+            } catch (e) { console.error(e); showAlert("Gagal menyimpan transaksi."); } finally { hideLoading(); }
+        }
+
+        let paymentStudentId = null;
+        function formatPaymentInput(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            e.target.value = value ? new Intl.NumberFormat('id-ID').format(value) : '';
+        }
+        function openPaymentModal(studentId) {
+            paymentStudentId = studentId;
+            const remainingBill = calculateTotalBill(studentId) - calculateTotalPaid(studentId);
+            document.getElementById('payment-modal-student-name').textContent = students.find(s => s.id === studentId).name;
+            document.getElementById('payment-modal-total-bill').textContent = formatCurrency(remainingBill);
+            document.getElementById('payment-amount').value = '';
+            document.getElementById('payment-modal').style.display = 'flex';
+        }
+        async function savePayment() {
+            const amount = parseFloat(document.getElementById('payment-amount').value.replace(/\./g, '')) || 0;
+            const remainingBill = calculateTotalBill(paymentStudentId) - calculateTotalPaid(paymentStudentId);
+            if (isNaN(amount) || amount <= 0) { showAlert("Jumlah pembayaran tidak valid."); return; }
+            if (amount > remainingBill) { showAlert("Jumlah pembayaran melebihi total tagihan."); return; }
+            showLoading();
+            try {
+                await addDoc(collection(db, "payments"), { studentId: paymentStudentId, amount, createdAt: new Date() });
+                if (amount >= remainingBill) {
+                    const unpaid = transactions.filter(t => t.studentId === paymentStudentId && t.status === 'Belum Lunas');
+                    const batch = writeBatch(db);
+                    unpaid.forEach(t => batch.update(doc(db, "transactions", t.id), { status: "Lunas" }));
+                    await batch.commit();
+                }
+                document.getElementById('payment-modal').style.display = 'none'; await initializeData(); renderStudentDetail(paymentStudentId);
+            } catch (e) { console.error(e); showAlert("Gagal menyimpan pembayaran."); } finally { hideLoading(); }
+        }
+
+        function openProductModal(productId = null) {
+            document.getElementById('product-form').reset();
+            document.getElementById('product-modal-title').textContent = productId ? 'Edit Produk' : 'Tambah Produk Baru';
+            document.getElementById('product-id').value = productId || '';
+            if (productId) {
+                const p = products.find(p => p.id === productId);
+                document.getElementById('product-name').value = p.name;
+                document.getElementById('product-price').value = p.price;
+            }
+            document.getElementById('product-modal').style.display = 'flex';
+        }
+        async function saveProduct(e) {
+            e.preventDefault();
+            const id = document.getElementById('product-id').value;
+            const data = { name: document.getElementById('product-name').value, price: parseFloat(document.getElementById('product-price').value) };
+            if (!data.name || isNaN(data.price)) { showAlert("Nama dan harga harus diisi."); return; }
+            showLoading();
+            try {
+                await (id ? setDoc(doc(db, "products", id), data) : addDoc(collection(db, "products"), data));
+                document.getElementById('product-modal').style.display = 'none'; await initializeData();
+            } catch (err) { console.error(err); showAlert("Gagal menyimpan produk."); } finally { hideLoading(); }
+        }
+
+        function openClassModal() {
+            document.getElementById('class-form').reset();
+            document.getElementById('class-modal').style.display = 'flex';
+        }
+        async function saveClass(e) {
+            e.preventDefault();
+            const className = document.getElementById('class-name').value.trim();
+            if (className === "") { showAlert("Nama kelas tidak boleh kosong."); return; }
+            if (classes.some(c => c.name.toLowerCase() === className.toLowerCase())) {
+                showAlert(`Kelas "${className}" sudah ada.`); return;
+            }
+            showLoading();
+            try {
+                await addDoc(collection(db, "classes"), { name: className });
+                document.getElementById('class-modal').style.display = 'none';
+                await initializeData();
+            } catch (err) { console.error(err); showAlert("Gagal menyimpan kelas."); }
+            finally { hideLoading(); }
+        }
+        
+        let confirmCallback = null;
+        function showConfirmation(message, callback) {
+            document.getElementById('confirmation-message').textContent = message;
+            confirmCallback = callback;
+            document.getElementById('confirmation-modal').style.display = 'flex';
+        }
+        function closeConfirmation() { document.getElementById('confirmation-modal').style.display = 'none'; }
+        
+        function handleDeleteProduct(productId) {
+            const p = products.find(p => p.id === productId);
+            showConfirmation(`Yakin ingin menghapus produk "${p.name}"?`, async () => {
+                showLoading();
+                try { await deleteDoc(doc(db, "products", productId)); await initializeData(); } 
+                catch (e) { console.error(e); showAlert("Gagal menghapus produk."); } finally { hideLoading(); }
+            });
+        }
+
+        function handleDeleteStudent(studentId) {
+            const s = students.find(s => s.id === studentId);
+            if ((calculateTotalBill(s.id) - calculateTotalPaid(s.id)) > 0) {
+                showAlert(`Siswa "${s.name}" tidak dapat dihapus karena masih memiliki tunggakan.`); return;
+            }
+            showConfirmation(`Yakin ingin menghapus siswa "${s.name}"?`, async () => {
+                showLoading();
+                try { await deleteDoc(doc(db, "students", studentId)); await initializeData(); } 
+                catch (e) { console.error(e); showAlert("Gagal menghapus siswa."); } finally { hideLoading(); }
+            });
+        }
+
+        function handleDeleteClass(classId, className) {
+            if (students.some(s => s.class === className)) {
+                showAlert(`Kelas "${className}" tidak dapat dihapus karena masih ada siswa di kelas tersebut.`); return;
+            }
+            showConfirmation(`Yakin ingin menghapus kelas "${className}"?`, async () => {
+                showLoading();
+                try { await deleteDoc(doc(db, "classes", classId)); await initializeData(); } 
+                catch (e) { console.error(e); showAlert("Gagal menghapus kelas."); } finally { hideLoading(); }
+            });
+        }
+    </script>
+</body>
+</html>
