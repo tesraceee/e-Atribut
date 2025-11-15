@@ -168,7 +168,7 @@
                     <!-- Products View -->
                     <div id="view-products" class="page-content hidden">
                         <div class="flex justify-between items-center mb-6"><h1 class="text-3xl font-bold text-white">Data Produk</h1><button id="add-product-btn" class="btn btn-gradient text-white px-5 py-2 rounded-lg shadow-md"><i class="fas fa-plus mr-2"></i>Tambah Produk</button></div>
-                         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="p-3 font-semibold text-gray-400">Nama Produk</th><th class="p-3 font-semibold text-gray-400">Harga</th><th class="p-3 font-semibold text-gray-400">Aksi</th></tr></thead><tbody id="products-table-body"></tbody></table></div></div>
+                        <div class="bg-gray-800 p-6 rounded-xl border border-gray-700"><div class="overflow-x-auto"><table class="w-full text-left"><thead><tr class="border-b border-gray-700"><th class="p-3 font-semibold text-gray-400">Nama Produk</th><th class="p-3 font-semibold text-gray-400">Harga</th><th class="p-3 font-semibold text-gray-400">Aksi</th></tr></thead><tbody id="products-table-body"></tbody></table></div></div>
                     </div>
 
                     <!-- Classes View -->
@@ -179,7 +179,16 @@
 
                     <!-- Reports View -->
                     <div id="view-reports" class="page-content hidden">
-                        <div class="flex justify-between items-center mb-6 no-print"><h1 class="text-3xl font-bold text-white">Laporan Keuangan</h1><button id="download-report-btn" class="btn bg-slate-600 text-white px-5 py-2 rounded-lg shadow-md"><i class="fas fa-file-excel mr-2"></i>Download Excel</button></div>
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-6 no-print">
+                            <h1 class="text-3xl font-bold text-white mb-3 md:mb-0">Laporan Keuangan</h1>
+                            <div class="flex space-x-4">
+                                <!-- Tombol Download tunggal -->
+                                <button id="download-combined-report-btn" class="btn btn-gradient text-white px-5 py-2 rounded-lg shadow-md whitespace-nowrap">
+                                    <i class="fas fa-download mr-2"></i>Download Laporan
+                                </button>
+                                <!-- Tombol yang dihapus: download-student-summary-btn, download-detailed-transactions-btn, download-summary-btn -->
+                            </div>
+                        </div>
                         <div class="bg-gray-800 p-6 rounded-xl border border-gray-700 no-print">
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                                 <div><label for="report-start-date" class="block text-sm font-medium text-gray-300">Tanggal Mulai</label><input type="date" id="report-start-date" class="mt-1 block w-full p-2 rounded-lg"></div>
@@ -222,13 +231,13 @@
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         
         const firebaseConfig = {
-           apiKey: "AIzaSyCvSJzRU-wrdcT24SjzLyY15pPc6F-MgC8",
-           authDomain: "bksmp-47d75.firebaseapp.com",
-           projectId: "bksmp-47d75",
-           storageBucket: "bksmp-47d75.firebasestorage.app",
-           messagingSenderId: "583452130184",
-           appId: "1:583452130184:web:08a31958f839ab6cef983d",
-           measurementId: "G-7H9YD4ZF1N"
+            apiKey: "AIzaSyCvSJzRU-wrdcT24SjzLyY15pPc6F-MgC8",
+            authDomain: "bksmp-47d75.firebaseapp.com",
+            projectId: "bksmp-47d75",
+            storageBucket: "bksmp-47d75.firebasestorage.app",
+            messagingSenderId: "583452130184",
+            appId: "1:583452130184:web:08a31958f839ab6cef983d",
+            measurementId: "G-7H9YD4ZF1N"
         };
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -247,6 +256,8 @@
 
         // Utility Functions
         const formatCurrency = (amount) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount);
+        // Utility function to format number (no currency symbol, uses dots for thousands)
+        const formatNumber = (amount) => new Intl.NumberFormat('id-ID', { minimumFractionDigits: 0 }).format(amount);
         const showLoading = () => loadingSpinner.style.display = 'flex';
         const hideLoading = () => loadingSpinner.style.display = 'none';
         const formatDate = (date) => new Date(date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -285,7 +296,10 @@
             document.getElementById('class-filter').addEventListener('change', (e) => { currentPage = 1; currentClassFilter = e.target.value; renderStudentsTable(); });
             document.body.addEventListener('click', handleBodyClick);
             document.getElementById('generate-report-btn').addEventListener('click', generateReport);
-            document.getElementById('download-report-btn').addEventListener('click', downloadExcelReport);
+            
+            // Tombol download tunggal yang menggabungkan kedua laporan
+            document.getElementById('download-combined-report-btn').addEventListener('click', downloadCombinedReport);
+            
             document.getElementById('import-excel-btn').addEventListener('click', handleExcelImport);
             document.getElementById('add-transaction-item').addEventListener('click', addTransactionItemRow);
             document.getElementById('cancel-transaction').addEventListener('click', closeTransactionModal);
@@ -538,6 +552,69 @@
             if (target.matches('#add-class-btn')) openClassModal();
         }
 
+        // Fungsi yang sama persis dengan downloadExcelReport, tapi mengembalikan data, tidak langsung mengunduh
+        function generateClassReportData() {
+            if (!currentReportData || !currentReportData.details || currentReportData.details.length === 0) {
+                 // Jika data report belum di-generate, kita hitung ulang untuk seluruh data
+                const incomeInPeriod = payments.reduce((sum, p) => sum + p.amount, 0); // Total income keseluruhan
+                const totalOutstanding = students.reduce((acc, student) => acc + (calculateTotalBill(student.id) - calculateTotalPaid(student.id)), 0);
+                
+                const reportByClass = {};
+                classes.forEach(c => {
+                    reportByClass[c.name] = { studentCount: 0, totalSpendingInPeriod: 0, totalOutstanding: 0 };
+                });
+
+                students.forEach(student => {
+                    const className = student.class || "Tanpa Kelas";
+                    if (!reportByClass[className]) {
+                        reportByClass[className] = { studentCount: 0, totalSpendingInPeriod: 0, totalOutstanding: 0 };
+                    }
+                    reportByClass[className].studentCount++;
+                    reportByClass[className].totalOutstanding += (calculateTotalBill(student.id) - calculateTotalPaid(student.id));
+                });
+                
+                transactions.forEach(transaction => {
+                    const student = students.find(s => s.id === transaction.studentId);
+                    if (student) {
+                        const className = student.class || "Tanpa Kelas";
+                        if (reportByClass[className]) {
+                            reportByClass[className].totalSpendingInPeriod += transaction.total;
+                        }
+                    }
+                });
+
+
+                currentReportData = {
+                    period: `Data Keseluruhan (Sejak Awal)`,
+                    income: incomeInPeriod,
+                    outstanding: totalOutstanding,
+                    details: Object.keys(reportByClass).sort().map(className => ({
+                        "Nama Kelas": className,
+                        "Jumlah Siswa": reportByClass[className].studentCount,
+                        "Total Belanja (Periode)": reportByClass[className].totalSpendingInPeriod,
+                        "Total Tunggakan": reportByClass[className].totalOutstanding,
+                    }))
+                };
+            }
+
+            const classReportData = currentReportData.details.map(d => ({
+                "Nama Kelas": d["Nama Kelas"],
+                "Jumlah Siswa": d["Jumlah Siswa"],
+                "Total Belanja": d["Total Belanja (Periode)"],
+                "Total Tunggakan": d["Total Tunggakan"],
+            }));
+
+            const summaryData = [
+                ["Laporan Keuangan"],
+                [currentReportData.period],
+                [],
+                ["Total Pemasukan Periode Ini", currentReportData.income],
+                ["Total Tunggakan Keseluruhan", currentReportData.outstanding]
+            ];
+            
+            return { classReportData, summaryData };
+        }
+
         function generateReport() {
             const startDateInput = document.getElementById('report-start-date').value;
             const endDateInput = document.getElementById('report-end-date').value;
@@ -600,29 +677,106 @@
             currentReportData.details.map(data => `<tr><td class="p-3 font-medium text-white">${data["Nama Kelas"]}</td><td class="p-3 text-center text-gray-300">${data["Jumlah Siswa"]}</td><td class="p-3 text-right text-gray-300">${formatCurrency(data["Total Belanja (Periode)"])}</td><td class="p-3 text-right font-semibold ${data["Total Tunggakan"] > 0 ? 'text-rose-400' : 'text-emerald-400'}">${formatCurrency(data["Total Tunggakan"])}</td></tr>`).join('');
         }
         
-        function downloadExcelReport() {
-            if (!currentReportData || !currentReportData.details || currentReportData.details.length === 0) {
-                showAlert("Tidak ada data laporan untuk diunduh. Silakan tampilkan laporan terlebih dahulu.");
-                return;
-            }
-            const worksheet = XLSX.utils.json_to_sheet(currentReportData.details);
+        // --- FUNGSI GABUNGAN DOWNLOAD MULTI-SHEET ---
+        function downloadCombinedReport() {
+            showLoading();
+
             const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan per Kelas");
 
-            const summaryData = [
-                ["Laporan Keuangan"],
-                [currentReportData.period],
-                [],
-                ["Total Pemasukan Periode Ini", currentReportData.income],
-                ["Total Tunggakan Keseluruhan", currentReportData.outstanding]
-            ];
-            const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
-            summarySheet['!cols'] = [{wch:30}, {wch:20}];
-            XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan");
+            // --- 1. SHEET RINGKASAN PER KELAS + RINGKASAN ---
+            const { classReportData, summaryData } = generateClassReportData();
+            
+            if (classReportData.length > 0) {
+                const classWorksheet = XLSX.utils.json_to_sheet(classReportData);
+                XLSX.utils.book_append_sheet(workbook, classWorksheet, "Ringkasan per Kelas");
 
-            worksheet['!cols'] = [{wch:20}, {wch:15}, {wch:25}, {wch:25}];
+                const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+                summarySheet['!cols'] = [{wch:30}, {wch:20}];
+                XLSX.utils.book_append_sheet(workbook, summarySheet, "Ringkasan Umum");
+                
+                classWorksheet['!cols'] = [{wch:25}, {wch:15}, {wch:25}, {wch:25}];
+            } else {
+                 showAlert("Tidak ada data kelas untuk diunduh.", "Peringatan", "fa-exclamation-triangle text-amber-400");
+                 hideLoading();
+                 return;
+            }
 
-            XLSX.writeFile(workbook, `Laporan-Keuangan-${new Date().toISOString().slice(0,10)}.xlsx`);
+
+            // --- 2. SHEET RINGKASAN TUNGGAKAN PER SISWA ---
+            
+            const studentSummaryData = students
+                .map(student => {
+                    const studentId = student.id;
+                    const studentTransactions = transactions.filter(t => t.studentId === studentId);
+                    
+                    // Hitung total semua tagihan dan total bayar
+                    const totalBill = calculateTotalBill(studentId);
+                    const totalPaid = calculateTotalPaid(studentId);
+                    const remainingBill = totalBill - totalPaid;
+
+                    if (totalBill === 0 && remainingBill === 0) {
+                        return null; // Skip students with no bill/no outstanding bill
+                    }
+
+                    // Kumpulkan semua produk dari semua transaksi menjadi satu string
+                    const allItems = studentTransactions.flatMap(t => Array.isArray(t.items) ? t.items : []);
+                    const itemCounts = {};
+                    
+                    allItems.forEach(item => {
+                        const key = `${item.productName} (${formatNumber(item.price)})`;
+                        itemCounts[key] = (itemCounts[key] || 0) + item.quantity;
+                    });
+
+                    // Format string rincian produk
+                    const rincianProduk = Object.keys(itemCounts)
+                        .map(key => `${itemCounts[key]}x ${key}`)
+                        .join('; ');
+
+                    return {
+                        "Nama Siswa": student.name,
+                        "Kelas": student.class || 'N/A',
+                        "Total Tagihan (Rp)": totalBill,
+                        "Total Dibayar (Rp)": totalPaid,
+                        "Sisa Tunggakan (Rp)": remainingBill,
+                        "Status Tunggakan": remainingBill > 0 ? 'Belum Lunas' : (totalBill > 0 ? 'Lunas' : 'Tidak Ada Tagihan'),
+                        "Rincian Produk Keseluruhan (Qty x Nama (Harga))": rincianProduk || 'Tidak Ada Transaksi',
+                    };
+                })
+                .filter(Boolean) // Remove null entries
+                .sort((a, b) => b["Sisa Tunggakan (Rp)"] - a["Sisa Tunggakan (Rp)"]); // Sort by outstanding bill descending
+
+            if (studentSummaryData.length > 0) {
+                const studentWorksheet = XLSX.utils.json_to_sheet(studentSummaryData);
+                XLSX.utils.book_append_sheet(workbook, studentWorksheet, "Ringkasan Tunggakan Siswa");
+
+                // Set column widths
+                studentWorksheet['!cols'] = [
+                    {wch: 25}, // Nama Siswa
+                    {wch: 15}, // Kelas
+                    {wch: 20}, // Total Tagihan
+                    {wch: 20}, // Total Dibayar
+                    {wch: 20}, // Sisa Tunggakan
+                    {wch: 20}, // Status Tunggakan
+                    {wch: 60}  // Rincian Produk
+                ];
+            } else {
+                 // Jika tidak ada data siswa, berikan peringatan saja, tapi tetap izinkan download laporan per kelas (jika ada)
+                 console.warn("Tidak ada data siswa dengan tagihan yang bisa diringkas.");
+            }
+
+
+            XLSX.writeFile(workbook, `Laporan-Keuangan-Gabungan-${new Date().toISOString().slice(0,10)}.xlsx`);
+            hideLoading();
+            showAlert("Berhasil mengunduh Laporan Keuangan Gabungan (Multi-Sheet).", "Sukses", "fa-check-circle text-emerald-500");
+        }
+        // --- END FUNGSI GABUNGAN DOWNLOAD MULTI-SHEET ---
+        
+        function downloadExcelReport() {
+            // This function is no longer attached to a button, but re-used by generateClassReportData for consistency
+        }
+
+        function downloadDetailedTransactions() {
+            // This function is removed as requested by the user.
         }
 
         function handleExcelImport() {
